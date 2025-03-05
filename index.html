@@ -12,15 +12,32 @@
     <p>Scanned Code: <span id="result"></span></p>
 
     <script>
-        const scanner = new BarcodeScannerJS('#scanner', { 
-            inputStream: { name: 'Live', type: 'LiveStream' }
-        });
+        // เริ่มต้นกล้อง
+        async function startCamera() {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+            const videoElement = document.getElementById('scanner');
+            videoElement.srcObject = stream;
 
-        scanner.onDetected(function(result) {
-            document.getElementById("result").innerText = "Scanned Code: " + result.codeResult.code;
-        });
+            // ตั้งค่า BarcodeScannerJS ให้ใช้งานกับกล้อง
+            const scanner = new BarcodeScannerJS('#scanner', {
+                inputStream: { 
+                    name: 'LiveStream', 
+                    type: 'LiveStream', 
+                    constraints: { 
+                        video: { facingMode: 'environment' }
+                    }
+                }
+            });
 
-        scanner.start(); // เริ่มการสแกน
+            // เมื่อพบการสแกน
+            scanner.onDetected(function(result) {
+                document.getElementById("result").innerText = "Scanned Code: " + result.codeResult.code;
+            });
+
+            scanner.start(); // เริ่มการสแกน
+        }
+
+        startCamera(); // เรียกฟังก์ชันเริ่มกล้อง
     </script>
 </body>
 </html>
