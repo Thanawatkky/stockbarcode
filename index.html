@@ -66,16 +66,26 @@
                 type: "LiveStream",
                 target: document.querySelector("#scanner"),
                 constraints: {
-                    width: 640,
-                    height: 480,
+                    width: 1280,   // เพิ่มความละเอียดของกล้อง
+                    height: 720,   // เพิ่มความละเอียดของกล้อง
                     facingMode: facingMode
                 },
                 willReadFrequently: true
             },
             decoder: {
-                readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
+                readers: [
+                    "ean_reader",       // EAN-13
+                    "ean_8_reader",     // EAN-8
+                    "upc_reader",       // UPC
+                    "code_128_reader",  // Code 128
+                    "qr_reader"         // QR Code
+                ]
             },
-            locate: true
+            locate: true,
+            multiple: false,  // ไม่ต้องการหลายการสแกนพร้อมกัน
+            inputStream: {
+                size: 800
+            }
         }, function(err) {
             if (err) {
                 console.error("Quagga init failed:", err);
