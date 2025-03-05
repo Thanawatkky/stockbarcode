@@ -3,82 +3,93 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Barcode Scanner with Quagga</title>
+    <title>Scan Barcode</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
     <style>
-        #barcode-scanner {
+        #scanner {
             width: 100%;
-            height: 400px;
-            background-color: #f0f0f0;
-            position: relative;
+            height: auto;
         }
-
-        .overlay {
-            position: absolute;
-            border: 2px solid red;
-            top: 0;
-            left: 0;
-            width: 0;
-            height: 0;
-            display: none; /* Hidden by default */
+        .mirrored {
+            transform: scaleX(-1);
         }
     </style>
 </head>
 <body>
     <h1>Scan Barcode</h1>
-    <div id="barcode-scanner"></div>
-    <div class="overlay" id="barcode-overlay"></div>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/quagga/0.12.1/quagga.min.js"></script>
+    <video id="scanner" width="400" height="300" autoplay></video>
+    <p>Scanned Code: <span id="result"></span></p>
+    <button id="flip-btn">Flip Camera</button>
+
     <script>
-        // Initializing Quagga with multiple barcode readers
+        let facingMode = "environment"; // กำหนดค่าเริ่มต้นเป็นกล้องหลัง
+        let currentStream = null;
+
+        // ฟังก์ชันเริ่มต้นกล้อง
+        async function startCamera() {
+            if (currentStream) {
+                currentStream.getTracks().forEach(track => track.stop()); // ปิดกล้องเก่าก่อนเปิดใหม่
+            }
+
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({
+                    video: { facingMode: facingMode } // ใช้ค่าของ facingMode ที่กำหนด
+                });
+                const video = document.getElementById("scanner");
+                video.srcObject = stream;
+                currentStream = stream;
+
+                // ถ้าใช้กล้องหน้า -> เพิ่มคลาส mirrored
+                if (facingMode === "user") {
+                    video.classList.add("mirrored");
+                } else {
+                    video.classList.remove("mirrored");
+                }
+            } catch (err) {
+                console.error("Error accessing camera: ", err);
+                alert("ไม่สามารถเปิดกล้องได้.");
+            }
+        }
+
+        // สลับกล้อง
+        document.getElementById("flip-btn").addEventListener("click", () => {
+            facingMode = facingMode === "environment" ? "user" : "environment"; // สลับกล้อง
+            startCamera();
+        });
+
+        startCamera(); // เรียกฟังก์ชันเริ่มต้นกล้องตอนโหลดหน้าเว็บ
+
+        // เริ่ม QuaggaJS เพื่อสแกนบาร์โค้ด
         Quagga.init({
             inputStream: {
                 name: "Live",
                 type: "LiveStream",
-                target: document.querySelector("#barcode-scanner"),
+                target: document.querySelector("#scanner"),
+                constraints: {
+                    width: 640,
+                    height: 480,
+                    facingMode: facingMode
+                },
+                willReadFrequently: true
             },
             decoder: {
-                readers: [
-                    "ean_reader",        // EAN-13
-                    "ean_8_reader",      // EAN-8
-                    "upc_reader",        // UPC
-                    "upc_e_reader",      // UPC-E
-                    "code_128_reader",   // Code 128
-                    "qr_reader",         // QR Code
-                ]
+                readers: ["code_128_reader", "ean_reader", "ean_8_reader", "upc_reader"]
             },
+            locate: true
         }, function(err) {
             if (err) {
-                console.log("Error initializing Quagga:", err);
+                console.error("Quagga init failed:", err);
                 return;
             }
             console.log("Quagga initialized successfully!");
             Quagga.start();
         });
 
-        // Handling the detected barcode result
+        // เมื่อมีการสแกนบาร์โค้ด
         Quagga.onDetected(function(data) {
-            console.log("Barcode detected:", data);
-            
-            // Play sound when barcode is detected
-            var beep = new Audio('https://www.soundjay.com/button/beep-07.wav');
-            beep.play();
-
-            // Show overlay (highlight the detected barcode area)
-            var overlay = document.getElementById("barcode-overlay");
-            var code = data.codeResult.code;
-            var rect = data.box;
-
-            // Position the overlay on the detected barcode
-            overlay.style.display = "block";  // Make the overlay visible
-
-            // Calculating the position and size of the overlay
-            overlay.style.top = rect[0][1] + "px";
-            overlay.style.left = rect[0][0] + "px";
-            overlay.style.width = (rect[2][0] - rect[0][0]) + "px";
-            overlay.style.height = (rect[2][1] - rect[0][1]) + "px";
-
-            // Display detected barcode in alert
-            alert("Detected Barcode: " + code);
+            console.log("Barcode detected:", data.codeResult.code);
+            document.getElementById("result").innerText = "Scanned Code: " + data.codeResult.code;
+            Quagga.stop();
         });
     </script>
 </body>
